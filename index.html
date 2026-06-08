@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador ENAM — Patologías Anorectales</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f8f7f4;
+      --surface: #ffffff;
+      --surface2: #f1f0ec;
+      --border: rgba(0,0,0,0.10);
+      --border2: rgba(0,0,0,0.18);
+      --text: #1a1a18;
+      --text2: #5f5e5a;
+      --text3: #888780;
+      --blue: #378ADD;
+      --blue-dark: #185FA5;
+      --blue-light: #E6F1FB;
+      --green: #1D9E75;
+      --green-dark: #0F6E56;
+      --green-light: #EAF3DE;
+      --green-text: #27500A;
+      --red: #A32D2D;
+      --red-light: #FCEBEB;
+      --red-text: #791F1F;
+      --amber: #BA7517;
+      --amber-light: #FAEEDA;
+      --gray: #888780;
+      --gray-light: #F1EFE8;
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a;
+        --surface: #262624;
+        --surface2: #2e2e2c;
+        --border: rgba(255,255,255,0.10);
+        --border2: rgba(255,255,255,0.18);
+        --text: #f0efe9;
+        --text2: #b4b2a9;
+        --text3: #888780;
+        --blue-light: #0C447C;
+        --green-light: #17502a;
+        --green-text: #C0DD97;
+        --red-light: #501313;
+        --red-text: #F7C1C1;
+        --amber-light: #412402;
+        --gray-light: #2C2C2A;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    #app {
+      max-width: 740px;
+      margin: 0 auto;
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── INTRO ── */
+    .intro-wrap {
+      min-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 0;
+    }
+    .intro-logo {
+      width: 64px; height: 64px;
+      background: var(--blue-light);
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.25rem;
+    }
+    .intro-logo svg { width: 32px; height: 32px; }
+    .intro-badge {
+      display: inline-block;
+      background: var(--blue-light);
+      color: var(--blue-dark);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 14px;
+      border-radius: 20px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .intro-title {
+      font-size: clamp(22px, 4vw, 30px);
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+    .intro-sub {
+      font-size: 15px;
+      color: var(--text2);
+      line-height: 1.65;
+      max-width: 480px;
+      margin: 0 auto 2rem;
+    }
+    .intro-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto 2rem;
+    }
+    .stat-cell {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 0.75rem;
+    }
+    .stat-num { font-size: 26px; font-weight: 700; color: var(--text); }
+    .stat-lbl { font-size: 12px; color: var(--text2); margin-top: 3px; }
+    .btn-start {
+      padding: 13px 44px;
+      font-size: 15px;
+      font-weight: 600;
+      background: var(--blue);
+      border: none;
+      color: #fff;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-start:hover { background: var(--blue-dark); }
+    .btn-start:active { transform: scale(0.97); }
+
+    /* ── EXAM HEADER ── */
+    .exam-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 0.85rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .exam-title { font-size: 14px; font-weight: 600; }
+    .exam-subtitle { font-size: 12px; color: var(--text2); margin-top: 1px; }
+    .timer-box {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface2);
+      border-radius: var(--radius);
+      padding: 6px 16px;
+      font-size: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.05em;
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+    }
+    .timer-box.warn { color: var(--amber); background: var(--amber-light); }
+    .timer-box.danger { color: var(--red); background: var(--red-light); }
+
+    /* ── PROGRESS ── */
+    .prog-wrap { margin-bottom: 1.25rem; }
+    .prog-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+    .prog-bar { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+    .prog-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s; }
+
+    /* ── DOT MAP ── */
+    .dot-map { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.25rem; }
+    .dot {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      border: 0.5px solid var(--border2);
+      font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text2);
+      transition: all 0.15s;
+      background: var(--surface);
+    }
+    .dot:hover { border-color: var(--blue); color: var(--blue); }
+    .dot.answered { background: var(--blue-light); border-color: var(--blue); color: var(--blue-dark); }
+    .dot.current { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    /* ── QUESTION ── */
+    .q-card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .q-num {
+      font-size: 11px; font-weight: 700;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+    .q-text { font-size: 15px; line-height: 1.7; color: var(--text); }
+
+    /* ── OPTIONS ── */
+    .opts { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.5rem; }
+    .opt-btn {
+      width: 100%; text-align: left;
+      background: var(--surface);
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 14px; line-height: 1.55;
+      color: var(--text);
+      cursor: pointer;
+      display: flex; align-items: flex-start; gap: 12px;
+      transition: background 0.13s, border-color 0.13s;
+    }
+    .opt-btn:hover:not(:disabled) { background: var(--surface2); border-color: var(--border2); }
+    .opt-letter { font-weight: 700; font-size: 13px; color: var(--text3); min-width: 16px; padding-top: 1px; }
+    .opt-btn.selected { border-color: var(--blue); background: var(--blue-light); }
+    .opt-btn.selected .opt-letter { color: var(--blue-dark); }
+
+    /* ── NAV ── */
+    .nav-row { display: flex; justify-content: space-between; gap: 12px; }
+    .btn-nav {
+      padding: 10px 22px; font-size: 13px; font-weight: 600;
+      border-radius: var(--radius); cursor: pointer;
+      transition: background 0.13s, transform 0.1s;
+    }
+    .btn-nav:active { transform: scale(0.97); }
+    .btn-prev { background: var(--surface); border: 0.5px solid var(--border2); color: var(--text); }
+    .btn-prev:hover { background: var(--surface2); }
+    .btn-next { background: var(--blue); border: none; color: #fff; }
+    .btn-next:hover { background: var(--blue-dark); }
+    .btn-finish { background: var(--green); border: none; color: #fff; }
+    .btn-finish:hover { background: var(--green-dark); }
+
+    /* ── RESULTS ── */
+    .result-top { text-align: center; margin-bottom: 1.5rem; padding: 2rem 1rem; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); }
+    .score-circle {
+      width: 120px; height: 120px; border-radius: 50%;
+      display: inline-flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+      border: 4px solid transparent;
+    }
+    .score-circle.pass { background: var(--green-light); border-color: var(--green); }
+    .score-circle.fail { background: var(--red-light); border-color: var(--red); }
+    .score-pct { font-size: 30px; font-weight: 800; }
+    .score-circle.pass .score-pct { color: var(--green-text); }
+    .score-circle.fail .score-pct { color: var(--red-text); }
+    .score-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .verdict { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .time-used { font-size: 13px; color: var(--text2); }
+
+    .result-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .rs { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center; }
+    .rs-num { font-size: 24px; font-weight: 800; }
+    .rs-num.c { color: var(--green); }
+    .rs-num.w { color: var(--red); }
+    .rs-num.s { color: var(--gray); }
+    .rs-lbl { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+    .review-header { font-size: 15px; font-weight: 700; margin-bottom: 1rem; padding-bottom: 10px; border-bottom: 0.5px solid var(--border); }
+    .rev-item {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      margin-bottom: 10px;
+    }
+    .rev-item.ci { border-left: 3px solid var(--green); }
+    .rev-item.wi { border-left: 3px solid var(--red); }
+    .rev-item.si { border-left: 3px solid var(--gray); }
+    .rev-qnum { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; margin-bottom: 6px; text-transform: uppercase; }
+    .ci .rev-qnum { color: var(--green); }
+    .wi .rev-qnum { color: var(--red); }
+    .si .rev-qnum { color: var(--gray); }
+    .rev-qtext { font-size: 14px; line-height: 1.6; color: var(--text); margin-bottom: 10px; }
+    .ans-rows { display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+    .ans-row { display: flex; gap: 8px; padding: 6px 10px; border-radius: 8px; align-items: flex-start; }
+    .ans-row.ua { background: var(--red-light); color: var(--red-text); }
+    .ans-row.ca { background: var(--green-light); color: var(--green-text); }
+    .ans-row.sa { background: var(--gray-light); color: var(--text2); }
+    .ans-lbl { font-weight: 700; min-width: 88px; font-size: 12px; flex-shrink: 0; }
+    .expl {
+      margin-top: 10px; padding: 10px 14px;
+      background: var(--surface2);
+      border-radius: 8px;
+      font-size: 13px; line-height: 1.6;
+      color: var(--text2);
+      border-left: 2px solid var(--blue);
+    }
+    .expl b { color: var(--text); font-weight: 600; }
+
+    .btn-retry {
+      display: block; margin: 1.5rem auto 0;
+      padding: 11px 32px; font-size: 14px; font-weight: 600;
+      background: var(--blue); border: none; color: #fff;
+      border-radius: var(--radius); cursor: pointer;
+      transition: background 0.13s;
+    }
+    .btn-retry:hover { background: var(--blue-dark); }
+
+    @media (max-width: 480px) {
+      .intro-stats { grid-template-columns: repeat(3,1fr); }
+      .result-grid { grid-template-columns: repeat(3,1fr); }
+      .exam-header { flex-direction: column; gap: 10px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- INTRO -->
+  <div id="s-intro" class="screen active">
+    <div class="intro-wrap">
+      <div class="intro-logo">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 4C9.373 4 4 9.373 4 16s5.373 12 12 12 12-5.373 12-12S22.627 4 16 4z" stroke="#378ADD" stroke-width="2"/>
+          <path d="M16 10v6l4 2" stroke="#378ADD" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="16" cy="16" r="2" fill="#378ADD"/>
+        </svg>
+      </div>
+      <div class="intro-badge">ENAM · Residentado Médico Perú</div>
+      <div class="intro-title">Patologías Anorectales</div>
+      <div class="intro-sub">Simulacro de examen con preguntas tipo ENAM. Al finalizar verás tu puntaje, las preguntas falladas y la explicación clínica de cada respuesta.</div>
+      <div class="intro-stats">
+        <div class="stat-cell"><div class="stat-num">20</div><div class="stat-lbl">Preguntas</div></div>
+        <div class="stat-cell"><div class="stat-num">30</div><div class="stat-lbl">Minutos</div></div>
+        <div class="stat-cell"><div class="stat-num">60%</div><div class="stat-lbl">Aprobatorio</div></div>
+      </div>
+      <button class="btn-start" onclick="startExam()">Iniciar examen</button>
+    </div>
+  </div>
+
+  <!-- EXAM -->
+  <div id="s-exam" class="screen">
+    <div class="exam-header">
+      <div>
+        <div class="exam-title">Patologías Anorectales</div>
+        <div class="exam-subtitle">Simulacro Residentado Médico</div>
+      </div>
+      <div class="timer-box" id="timer">30:00</div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-info">
+        <span id="p-label">Pregunta 1 de 20</span>
+        <span id="p-ans">0 respondidas</span>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" id="p-fill" style="width:5%"></div></div>
+    </div>
+    <div class="dot-map" id="dot-map"></div>
+    <div class="q-card">
+      <div class="q-num" id="q-num">Pregunta 1</div>
+      <div class="q-text" id="q-text"></div>
+    </div>
+    <ul class="opts" id="opts"></ul>
+    <div class="nav-row">
+      <button class="btn-nav btn-prev" onclick="prevQ()">← Anterior</button>
+      <button class="btn-nav btn-next" id="btn-ns" onclick="nextOrSubmit()">Siguiente →</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="s-results" class="screen">
+    <div class="result-top">
+      <div class="score-circle" id="sc-circle">
+        <div class="score-pct" id="sc-pct">0%</div>
+        <div class="score-label">Puntaje</div>
+      </div>
+      <div class="verdict" id="sc-verdict"></div>
+      <div class="time-used" id="sc-time"></div>
+    </div>
+    <div class="result-grid">
+      <div class="rs"><div class="rs-num c" id="r-c">0</div><div class="rs-lbl">Correctas</div></div>
+      <div class="rs"><div class="rs-num w" id="r-w">0</div><div class="rs-lbl">Incorrectas</div></div>
+      <div class="rs"><div class="rs-num s" id="r-s">0</div><div class="rs-lbl">Sin responder</div></div>
+    </div>
+    <div class="review-header">Revisión detallada</div>
+    <div id="review"></div>
+    <button class="btn-retry" onclick="reset()">Repetir examen</button>
+  </div>
+
+</div>
+<script>
+const QS = [
+  {q:"Paciente de 45 años presenta dolor intenso en región anal durante la defecación, acompañado de sangrado escaso en papel higiénico y constipación. A la inspección se observa una fisura en la línea media posterior. ¿Cuál es el tratamiento de primera línea para una fisura anal aguda?",opts:["Esfinterotomía lateral interna","Nitroglicerina tópica al 0.2%","Hemorroidectomía","Drenaje quirúrgico"],c:1,e:"Las fisuras anales agudas responden bien al tratamiento conservador. Los relajantes del esfínter tópicos como nitroglicerina 0.2% o diltiazem son de primera línea. La esfinterotomía lateral interna se reserva para fisuras crónicas refractarias a tratamiento médico."},
+  {q:"Un paciente presenta hemorroide interna que prolapsa durante la defecación y se reduce espontáneamente. Según la clasificación de Goligher, ¿a qué grado corresponde?",opts:["Grado I","Grado II","Grado III","Grado IV"],c:1,e:"Clasificación de Goligher: Grado I sangrado sin prolapso, Grado II prolapso que se reduce espontáneamente, Grado III prolapso que requiere reducción manual, Grado IV prolapso irreductible. Este caso corresponde a Grado II."},
+  {q:"Paciente de 32 años, homosexual activo, consulta por dolor perianal severo, fiebre y tenesmo rectal. En el examen proctoscópico se evidencia eritema, pus y úlceras en mucosa rectal baja. ¿Cuál es el diagnóstico más probable?",opts:["Enfermedad de Crohn perianal","Proctitis gonocócica","Absceso perianal","Carcinoma de canal anal"],c:1,e:"La proctitis gonocócica se presenta en hombres que tienen sexo con hombres (HSH). Se manifiesta con dolor rectal, tenesmo, secreción y proctoscopia con mucosa eritematosa y purulenta. El diagnóstico se confirma con cultivo o PCR para Neisseria gonorrhoeae."},
+  {q:"¿Cuál es el límite anatómico que separa el canal anal del recto y tiene importancia pronóstica en el cáncer de canal anal?",opts:["Línea pectínea (dentada)","Línea blanca de Hilton","Línea de Houston","Esfínter anal externo"],c:0,e:"La línea pectínea (dentada) es el límite embriológico entre el endodermo y el ectodermo. Separa el epitelio columnar del escamoso. Los tumores por encima drenan a ganglios ilíacos internos y los de abajo a inguinales. Es de gran importancia en estadificación del cáncer anal."},
+  {q:"Paciente con diagnóstico de absceso perianal. ¿Cuál es el tratamiento inmediato de elección?",opts:["Antibioticoterapia IV con metronidazol + ciprofloxacino","Drenaje quirúrgico incisional","Aplicación de calor local y analgésicos","Colonoscopia para descartar enfermedad inflamatoria"],c:1,e:"El absceso perianal requiere drenaje quirúrgico urgente como tratamiento definitivo. Los antibióticos son un complemento, no el tratamiento primario. El retraso en el drenaje puede llevar a sepsis o extensión al espacio isquiorrectal (absceso en herradura)."},
+  {q:"El condiloma acuminado perianal es causado principalmente por:",opts:["Virus del herpes simple tipo 2","Treponema pallidum","Virus del papiloma humano (VPH) tipos 6 y 11","Molluscum contagiosum"],c:2,e:"Los condilomas acuminados (verrugas genitales) son causados por VPH, predominantemente los tipos 6 y 11 (de bajo riesgo). Los tipos 16 y 18 son de alto riesgo oncogénico y se asocian al carcinoma de canal anal. El tratamiento incluye podofilotoxina, imiquimod o crioterapia."},
+  {q:"Paciente de 60 años con hematoquezia, cambio en el ritmo deposicional y pérdida de peso. La colonoscopia muestra una lesión ulcerada en recto inferior. La biopsia reporta carcinoma escamoso. ¿Cuál es el tratamiento estándar de primera línea?",opts:["Resección anterior baja (RAB)","Operación de Miles (amputación abdominoperineal)","Quimiorradioterapia concurrente (protocolo Nigro)","Quimioterapia con FOLFOX"],c:2,e:"El carcinoma escamoso del canal anal se trata con quimiorradioterapia concurrente (protocolo Nigro: 5-FU + mitomicina C + radioterapia). Tiene alta tasa de respuesta completa (~80%) y permite preservar el esfínter. La cirugía se reserva para casos refractarios o recidivantes."},
+  {q:"Una fístula anal que cruza más del 30% del esfínter externo se clasifica como:",opts:["Fístula interesfintérica","Fístula transesfintérica baja","Fístula transesfintérica alta (compleja)","Fístula supraesfintérica"],c:2,e:"Las fístulas transesfintéricas altas comprometen >30% del esfínter externo. Son de alto riesgo para incontinencia si se realiza fistulotomía directa. Requieren técnicas como el colgajo de avance (advancement flap), LIFT o sedales (seton) para su manejo."},
+  {q:"El prurito anal crónico idiopático es más frecuente en:",opts:["Mujeres postmenopáusicas","Varones de mediana edad","Niños en edad escolar","Pacientes con diabetes mellitus tipo 2"],c:1,e:"El prurito anal idiopático afecta predominantemente a varones de 40-60 años. Se asocia a factores locales como humedad, heces residuales, jabones irritantes y alimentos (café, picante, alcohol). El manejo incluye higiene adecuada, evitar irritantes y, en casos seleccionados, inyección intradérmica de azul de metileno."},
+  {q:"Paciente de 28 años con dolor perianal intermitente, secreción purulenta recurrente y un orificio externo en la piel perianal. ¿Cuál es el diagnóstico más probable?",opts:["Sinus pilonidal","Fístula perianal","Absceso perianal drenado espontáneamente","Hidradenitis supurativa"],c:1,e:"La fístula perianal se caracteriza por: historia de absceso perianal previo (60-70% de los casos), dolor intermitente, secreción purulenta y un orificio externo visible. Se diagnostica con exploración bajo anestesia (EBA). La regla de Goodsall ayuda a predecir el trayecto fistuloso."},
+  {q:"La regla de Goodsall establece que las fístulas con orificio externo posterior a la línea transanal:",opts:["Siguen un trayecto recto hacia la cripta dentada más cercana","Siguen un trayecto curvo hacia la cripta posterior en la línea media","Drenan siempre al espacio isquiorrectal","Tienen siempre un trayecto supraelevador"],c:1,e:"Regla de Goodsall: Los orificios externos anteriores a la línea transanal tienen trayecto recto hacia la cripta dentada correspondiente. Los orificios posteriores tienen trayecto curvo hacia la cripta dentada posterior en la línea media. Excepción: fístulas anteriores >3 cm del ano pueden tener trayecto curvo."},
+  {q:"El prolapso rectal completo (procidentia) se diferencia de las hemorroides prolapsadas en que:",opts:["El prolapso rectal tiene pliegues concéntricos y es más doloroso","Las hemorroides prolapsadas tienen pliegues radiales y son más friables","El prolapso rectal tiene pliegues mucosos concéntricos circulares","No hay diferencia clínica significativa"],c:2,e:"El prolapso rectal completo muestra pliegues mucosos concéntricos (transversales). Las hemorroides prolapsadas tienen pliegues radiales (tipo rayos de rueda). El prolapso rectal también muestra todas las capas de la pared rectal y frecuentemente se asocia a incontinencia fecal."},
+  {q:"El síndrome de úlcera rectal solitaria se asocia principalmente con:",opts:["Enfermedad de Crohn del recto","Prolapso interno de mucosa rectal (intususepción)","Carcinoma de recto in situ","Colitis ulcerativa distal"],c:1,e:"El síndrome de úlcera rectal solitaria está relacionado con el prolapso interno de mucosa rectal durante el esfuerzo defecatorio. Histológicamente muestra fibrosis de la lámina propia y extensión de fibras musculares entre las criptas. Se ubica típicamente en pared anterior, a 7-10 cm del margen anal."},
+  {q:"Paciente con enfermedad de Crohn perianal presenta una fístula rectovaginal. ¿Cuál es el tratamiento médico de primera línea antes de considerar cirugía?",opts:["Mesalazina oral","Azatioprina + anti-TNF (infliximab)","Metronidazol en monoterapia","Corticoides sistémicos"],c:1,e:"Las fístulas en enfermedad de Crohn requieren tratamiento combinado: drenaje con sedal para control del proceso séptico + terapia biológica (anti-TNF como infliximab) junto con inmunomoduladores (azatioprina/6-mercaptopurina). Esta combinación tiene mayor tasa de cierre fistuloso que la monoterapia."},
+  {q:"¿Cuál de las siguientes es la complicación más temida de la hemorroidectomía de Milligan-Morgan?",opts:["Retención urinaria postoperatoria","Estenosis anal postoperatoria","Incontinencia fecal por lesión esfinteriana","Sangrado postoperatorio tardío (día 7-10)"],c:2,e:"Si bien todas son complicaciones reconocidas, la más temida (aunque no la más frecuente) es la incontinencia fecal, ya que es potencialmente permanente y grave. La retención urinaria es la complicación más frecuente. La estenosis se relaciona con extirpación excesiva de anodermo."},
+  {q:"La infección por VIH aumenta el riesgo de carcinoma de canal anal fundamentalmente por:",opts:["Inmunosupresión que favorece infección persistente por VPH oncogénico","Efecto citopático directo del VIH sobre el epitelio anal","Mayor frecuencia de traumatismos anales","Uso de antirretrovirales con efecto carcinogénico"],c:0,e:"En pacientes VIH+, la inmunosupresión impide el aclaramiento del VPH, favoreciendo la infección persistente por tipos oncogénicos (16, 18, 31, 33). Esto aumenta hasta 80 veces el riesgo de carcinoma anal. El screening con citología anal y anoscopía de alta resolución es recomendado en este grupo."},
+  {q:"La técnica de ligadura con banda elástica (rubber band ligation) está indicada para hemorroides internas de:",opts:["Grado I y II","Grado II y III","Grado III y IV","Cualquier grado"],c:1,e:"La ligadura con banda elástica es el procedimiento ambulatorio más efectivo para hemorroides internas Grado II y III. Para Grado I: escleroterapia o medidas conservadoras. Grado IV: hemorroidectomía quirúrgica. La aplicación debe realizarse sobre la línea dentada (por encima, en mucosa insensible) para evitar dolor."},
+  {q:"Un paciente presenta sangrado rojo brillante con la defecación, sin dolor, desde hace 3 meses. La anoscopia muestra hemorroides internas. ¿Cuál es el estudio adicional OBLIGATORIO en este paciente de 52 años?",opts:["No requiere estudios adicionales, el diagnóstico es claro","Colonoscopia completa para descartar lesión proximal","Rectosigmoidoscopia flexible","Enema de bario de doble contraste"],c:1,e:"En todo paciente mayor de 40-50 años con sangrado rectal, incluso con hemorroides evidentes, es obligatoria la colonoscopia completa para descartar neoplasia proximal. Las hemorroides no excluyen la coexistencia de pólipos o cáncer de colon. Recomendación de las guías ACG y ESCP."},
+  {q:"El absceso isquiorrectal difiere del perianal en que:",opts:["Es más superficial y de menor tamaño","Ocupa el espacio isquiorrectal, es más profundo y puede ser bilateral (en herradura)","Solo ocurre en pacientes diabéticos","No requiere drenaje quirúrgico"],c:1,e:"El absceso isquiorrectal se ubica en el espacio isquiorrectal (entre esfínter externo y piel). Es más profundo, voluminoso y puede extenderse al lado contralateral formando el absceso en herradura. El perianal es superficial, contiguo al canal anal y más pequeño."},
+  {q:"La incontinencia fecal de tipo pasivo (escape involuntario sin urgencia) se asocia principalmente a disfunción del:",opts:["Esfínter anal interno (EAI)","Esfínter anal externo (EAE)","Músculo puborrectal","Nervio pudendo"],c:0,e:"El esfínter anal interno (músculo liso, control autonómico) mantiene el tono anal en reposo (~85% del tono basal) y previene la incontinencia pasiva. El esfínter anal externo (músculo esquelético, control voluntario) actúa en la continencia de urgencia. La manometría anorrectal diferencia ambos tipos de disfunción."}
+];
+
+const LETTERS = ['A','B','C','D'];
+let cur = 0, ans = new Array(QS.length).fill(null), secs = 1800, usedSecs = 0, tmr = null;
+
+function $(id){ return document.getElementById(id); }
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+function startExam(){
+  show('s-exam');
+  renderDots(); renderQ();
+  tmr = setInterval(()=>{ secs--; usedSecs++; updateTimer(); if(secs<=0){ clearInterval(tmr); finish(); }}, 1000);
+}
+
+function updateTimer(){
+  const m = Math.floor(secs/60), s = secs%60;
+  const el = $('timer');
+  el.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  el.className = 'timer-box' + (secs<=60?' danger': secs<=300?' warn':'');
+}
+
+function renderDots(){
+  const c = $('dot-map'); c.innerHTML='';
+  QS.forEach((_,i)=>{
+    const d = document.createElement('div');
+    d.className='dot'+(i===cur?' current':ans[i]!==null?' answered':'');
+    d.textContent = i+1;
+    d.onclick=()=>{ cur=i; renderQ(); renderDots(); };
+    c.appendChild(d);
+  });
+}
+
+function renderQ(){
+  const q = QS[cur];
+  $('q-num').textContent = 'Pregunta '+(cur+1);
+  $('q-text').textContent = q.q;
+  $('p-label').textContent = 'Pregunta '+(cur+1)+' de '+QS.length;
+  $('p-ans').textContent = ans.filter(a=>a!==null).length+' respondidas';
+  $('p-fill').style.width = ((cur+1)/QS.length*100)+'%';
+  const ol = $('opts'); ol.innerHTML='';
+  q.opts.forEach((o,i)=>{
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.className='opt-btn'+(ans[cur]===i?' selected':'');
+    btn.innerHTML='<span class="opt-letter">'+LETTERS[i]+'.</span><span>'+o+'</span>';
+    btn.onclick=()=>selectA(i);
+    li.appendChild(btn); ol.appendChild(li);
+  });
+  const bns = $('btn-ns');
+  if(cur===QS.length-1){ bns.textContent='Finalizar examen'; bns.className='btn-nav btn-finish'; }
+  else { bns.textContent='Siguiente →'; bns.className='btn-nav btn-next'; }
+}
+
+function selectA(i){ ans[cur]=i; renderQ(); renderDots(); }
+function prevQ(){ if(cur>0){ cur--; renderQ(); renderDots(); } }
+function nextOrSubmit(){ if(cur<QS.length-1){ cur++; renderQ(); renderDots(); } else finish(); }
+
+function finish(){
+  clearInterval(tmr);
+  show('s-results');
+  let c=0,w=0,s=0;
+  ans.forEach((a,i)=>{ if(a===null) s++; else if(a===QS[i].c) c++; else w++; });
+  const pct = Math.round(c/QS.length*100);
+  const pass = pct>=60;
+  $('sc-pct').textContent=pct+'%';
+  $('sc-circle').className='score-circle '+(pass?'pass':'fail');
+  $('sc-verdict').textContent=pass?'¡Aprobado!':'No aprobado';
+  const um=Math.floor(usedSecs/60), us=usedSecs%60;
+  $('sc-time').textContent='Tiempo utilizado: '+um+' min '+String(us).padStart(2,'0')+' seg';
+  $('r-c').textContent=c; $('r-w').textContent=w; $('r-s').textContent=s;
+  const rv = $('review'); rv.innerHTML='';
+  QS.forEach((q,i)=>{
+    const ua=ans[i];
+    let st, cls;
+    if(ua===null){ st='skip'; cls='si'; }
+    else if(ua===q.c){ st='correct'; cls='ci'; }
+    else { st='wrong'; cls='wi'; }
+    const labels={correct:'✓ Correcta',wrong:'✗ Incorrecta',skip:'— Sin responder'};
+    let aRows='';
+    if(st==='wrong'){
+      aRows='<div class="ans-row ua"><span class="ans-lbl">Tu respuesta:</span><span>'+LETTERS[ua]+'. '+q.opts[ua]+'</span></div>'+
+            '<div class="ans-row ca"><span class="ans-lbl">Respuesta correcta:</span><span>'+LETTERS[q.c]+'. '+q.opts[q.c]+'</span></div>';
+    } else if(st==='correct'){
+      aRows='<div class="ans-row ca"><span class="ans-lbl">Tu respuesta:</span><span>'+LETTERS[ua]+'. '+q.opts[ua]+'</span></div>';
+    } else {
+      aRows='<div class="ans-row sa"><span class="ans-lbl">Sin responder</span><span>Correcta: '+LETTERS[q.c]+'. '+q.opts[q.c]+'</span></div>';
+    }
+    const div=document.createElement('div');
+    div.className='rev-item '+cls;
+    div.innerHTML='<div class="rev-qnum">'+( i+1)+'. '+labels[st]+'</div>'+
+      '<div class="rev-qtext">'+q.q+'</div>'+
+      '<div class="ans-rows">'+aRows+'</div>'+
+      '<div class="expl"><b>Explicación:</b> '+q.e+'</div>';
+    rv.appendChild(div);
+  });
+}
+
+function reset(){
+  cur=0; ans=new Array(QS.length).fill(null); secs=1800; usedSecs=0;
+  clearInterval(tmr); $('timer').textContent='30:00'; $('timer').className='timer-box';
+  show('s-intro');
+}
+</script>
+</body>
+</html>
